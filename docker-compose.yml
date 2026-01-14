@@ -1,0 +1,26 @@
+services:
+  my-adkagent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: my-adkagent
+    ports:
+      - "8000:8000"
+    environment:
+      # 這些環境變數會傳遞給容器
+      # 實際值應該在 .env 檔案中設定
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-FALSE}
+    env_file:
+      # 從 .env 檔案讀取環境變數
+      - .env
+    volumes:
+      # 掛載 .adk artifacts 目錄（選用）
+      - ./.adk:/app/.adk
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

@@ -1,0 +1,26 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment variables (contains sensitive API keys)
+.env
+.env.local
+
+# Google Ads / Apps Script ADK
+.adk/
+.clasp.json
+node_modules/
+*.auth.json
+
+# Claude Code CLI temporary files
+tmpclaude-*
+
+# Logs
+*.log

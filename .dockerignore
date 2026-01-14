@@ -1,0 +1,47 @@
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 虛擬環境
+.venv
+venv/
+ENV/
+
+# 環境變數檔案（敏感資訊）
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# ADK artifacts
+.adk/
+
+# 測試和覆蓋率
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 文檔
+*.md
+!README.md
+
+# 暫存檔
+tmpclaude-*
+*.tmp
+*.log
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml

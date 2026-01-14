@@ -1,0 +1,9 @@
+[project]
+name = "my-adkagent"
+version = "0.1.0"
+description = "我的第一個 Google ADK 練習"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "google-adk==1.15.1",
+]

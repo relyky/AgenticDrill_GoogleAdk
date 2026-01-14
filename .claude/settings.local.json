@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(if [ ! -f .env ])",
+      "Bash(then echo \".env 檔案不存在\")",
+      "Bash(else echo \".env 檔案已存在\")",
+      "Bash(fi)",
+      "Bash(docker build:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}
