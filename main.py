@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
 from root_agent.agent import root_agent
+from __init__ import SERVICE_NAME, VERSION
 
 load_dotenv() # 這會讀取 .env 檔案
 
@@ -32,7 +33,7 @@ artifacts_service = InMemoryArtifactService()
 
 
 # 設定 FastAPI
-app = FastAPI()
+app = FastAPI(title=SERVICE_NAME, version=VERSION)
 
 # CORS
 app.add_middleware(
@@ -42,6 +43,15 @@ app.add_middleware(
 	allow_methods=["*"],
 	allow_headers=["*"],
 )
+
+
+@app.get("/healthz")
+async def health_check():
+    return {
+        "status": "ok",
+        "service_name": SERVICE_NAME,
+        "version": VERSION,
+	}
 
 @app.post("/query")
 async def handle_query(request: QueryRequest):
