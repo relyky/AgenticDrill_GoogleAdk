@@ -65,7 +65,7 @@ artifacts_service = InMemoryArtifactService()
 
 # Runner 串接 Agent 與服務
 runner = Runner(
-    app_name="my_adkagent",
+    app_name="google_adk_drill",
     agent=root_agent,  # 從 root_agent.agent 匯入
     session_service=session_service,
     artifact_service=artifacts_service

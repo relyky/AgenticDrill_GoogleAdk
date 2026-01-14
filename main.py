@@ -51,7 +51,7 @@ async def handle_query(request: QueryRequest):
         # 建立新會話
         session = await session_service.create_session(
             state={},
-            app_name="my_adkagent",
+            app_name="google_adk_drill",
             user_id="user"
         )
         
@@ -61,7 +61,7 @@ async def handle_query(request: QueryRequest):
         
         # Runner 負責執行 Agent
         runner = Runner(
-            app_name="my_adkagent",
+            app_name="google_adk_drill",
             agent=root_agent,
             session_service=session_service,
             artifact_service=artifacts_service

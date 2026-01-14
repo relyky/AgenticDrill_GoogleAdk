@@ -1,3 +1,5 @@
+# Google ADK Drlll
+此專案是為了練習 Google ADK 開發。
 
 ## 開發環境準備
 ```bash
