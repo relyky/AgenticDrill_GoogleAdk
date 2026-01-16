@@ -35,7 +35,7 @@ async def handle_query(
     """
     處理用戶查詢請求，透過 Google ADK (Gemini) 生成回應。
 
-    接收 multipart/form-data 格式的請求，將上傳檔案內容與用戶問題組合後傳送給 ClaudeSDKClient 處理。(未實作)
+    接收 multipart/form-data 格式的請求，將上傳檔案內容與用戶問題組合後傳送給 AI 處理。
 
     Args:
         userInput: 用戶查詢文字
@@ -54,8 +54,41 @@ async def handle_query(
             user_id="user"
         )
         
-        # 將使用者訊息轉成 ADK Content
-        parts = [types.Part(text=userInput)]
+        # 處理上傳檔案內容 (方案 1: 一起送)
+        full_prompt = userInput
+        if files:
+            file_texts = []
+            for file in files:
+                try:
+                    content_bytes = await file.read()
+                    size_kb = len(content_bytes) / 1024
+                    
+                    # 嘗試解碼為文字，處理常見的 utf-8
+                    content_str = content_bytes.decode("utf-8")
+                    
+                    # 根據副檔名加上 markdown 標記
+                    ext = file.filename.split('.')[-1].lower() if '.' in file.filename else "text"
+                    
+                    # 組合檔案詳細資訊
+                    file_info = (
+                        f"\n--- 附件檔案詳細資訊 ---\n"
+                        f"檔名: {file.filename}\n"
+                        f"類型: {file.content_type} (. {ext})\n"
+                        f"大小: {size_kb:.2f} KB\n"
+                        f"內容:\n"
+                        f"```{ext}\n"
+                        f"{content_str}\n"
+                        f"```"
+                    )
+                    file_texts.append(file_info)
+                except Exception as e:
+                    file_texts.append(f"\n--- 附件檔案: {file.filename} (讀取失敗: {str(e)}) ---")
+            
+            if file_texts:
+                full_prompt += "\n\n以下是附件內容：\n" + "\n".join(file_texts)
+
+        # 將組合後的訊息轉成 ADK Content
+        parts = [types.Part(text=full_prompt)]
         content = types.Content(role="user", parts=parts)
         
         # Runner 負責執行 Agent
