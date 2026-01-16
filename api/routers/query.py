@@ -25,6 +25,48 @@ class QueryResponse(BaseModel):
 session_service = InMemorySessionService()
 artifacts_service = InMemoryArtifactService()
 
+async def process_uploaded_text_files(files: List[UploadFile]) -> str:
+    """
+    讀取並處理上傳的文字檔案內容，將其轉換為可供 AI 閱讀的文字區塊。
+
+    Args:
+        files: 上傳的檔案列表
+
+    Returns:
+        包含所有檔案內容的格式化字串
+    """
+    if not files:
+        return ""
+        
+    file_texts = []
+    for file in files:
+        try:
+            content_bytes = await file.read()
+            size_kb = len(content_bytes) / 1024
+            
+            # 嘗試解碼為文字，處理常見的 utf-8
+            content_str = content_bytes.decode("utf-8")
+            
+            # 根據副檔名加上 markdown 標記
+            ext = file.filename.split('.')[-1].lower() if '.' in file.filename else "text"
+            
+            # 組合檔案詳細資訊
+            file_info = (
+                f"\n--- 附件檔案詳細資訊 ---\n"
+                f"檔名: {file.filename}\n"
+                f"類型: {file.content_type} (. {ext})\n"
+                f"大小: {size_kb:.2f} KB\n"
+                f"內容:\n"
+                f"```{ext}\n"
+                f"{content_str}\n"
+                f"```"
+            )
+            file_texts.append(file_info)
+        except Exception as e:
+            file_texts.append(f"\n--- 附件檔案: {file.filename} (讀取失敗: {str(e)}) ---")
+    
+    return "\n\n以下是附件內容：\n" + "\n".join(file_texts)
+
 @router.post("/query", response_model=QueryResponse)
 async def handle_query(
     # 文字欄位使用 Form() 接收
@@ -45,8 +87,6 @@ async def handle_query(
         QueryResponse
     """
     try:
-        now = datetime.now()
-        
         # 建立新會話
         session = await session_service.create_session(
             state={},
@@ -57,35 +97,7 @@ async def handle_query(
         # 處理上傳檔案內容 (方案 1: 一起送)
         full_prompt = userInput
         if files:
-            file_texts = []
-            for file in files:
-                try:
-                    content_bytes = await file.read()
-                    size_kb = len(content_bytes) / 1024
-                    
-                    # 嘗試解碼為文字，處理常見的 utf-8
-                    content_str = content_bytes.decode("utf-8")
-                    
-                    # 根據副檔名加上 markdown 標記
-                    ext = file.filename.split('.')[-1].lower() if '.' in file.filename else "text"
-                    
-                    # 組合檔案詳細資訊
-                    file_info = (
-                        f"\n--- 附件檔案詳細資訊 ---\n"
-                        f"檔名: {file.filename}\n"
-                        f"類型: {file.content_type} (. {ext})\n"
-                        f"大小: {size_kb:.2f} KB\n"
-                        f"內容:\n"
-                        f"```{ext}\n"
-                        f"{content_str}\n"
-                        f"```"
-                    )
-                    file_texts.append(file_info)
-                except Exception as e:
-                    file_texts.append(f"\n--- 附件檔案: {file.filename} (讀取失敗: {str(e)}) ---")
-            
-            if file_texts:
-                full_prompt += "\n\n以下是附件內容：\n" + "\n".join(file_texts)
+            full_prompt += await process_uploaded_text_files(files)
 
         # 將組合後的訊息轉成 ADK Content
         parts = [types.Part(text=full_prompt)]
