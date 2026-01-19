@@ -25,47 +25,41 @@ class QueryResponse(BaseModel):
 session_service = InMemorySessionService()
 artifacts_service = InMemoryArtifactService()
 
-async def process_uploaded_text_files(files: List[UploadFile]) -> str:
+async def convert_files_to_metadata_parts(files: List[UploadFile]) -> List[types.Part]:
     """
-    讀取並處理上傳的文字檔案內容，將其轉換為可供 AI 閱讀的文字區塊。
-
+    將上傳的檔案轉換為 google.genai.types.Part 物件，使用 inline_data 方式。
+    
     Args:
         files: 上傳的檔案列表
-
+        
     Returns:
-        包含所有檔案內容的格式化字串
+        包含檔案媒體資訊的 Part 列表
     """
     if not files:
-        return ""
+        return []
         
-    file_texts = []
+    parts = []
     for file in files:
         try:
             content_bytes = await file.read()
-            size_kb = len(content_bytes) / 1024
+            mime_type = file.content_type or "application/octet-stream"
             
-            # 嘗試解碼為文字，處理常見的 utf-8
-            content_str = content_bytes.decode("utf-8")
-            
-            # 根據副檔名加上 markdown 標記
-            ext = file.filename.split('.')[-1].lower() if '.' in file.filename else "text"
-            
-            # 組合檔案詳細資訊
-            file_info = (
-                f"\n--- 附件檔案詳細資訊 ---\n"
-                f"檔名: {file.filename}\n"
-                f"類型: {file.content_type} (. {ext})\n"
-                f"大小: {size_kb:.2f} KB\n"
-                f"內容:\n"
-                f"```{ext}\n"
-                f"{content_str}\n"
-                f"```"
+            # 使用 inline_data (Blob) 封裝檔案
+            parts.append(
+                types.Part(
+                    inline_data=types.Blob(
+                        data=content_bytes,
+                        mime_type=mime_type
+                    )
+                )
             )
-            file_texts.append(file_info)
+            # 重置讀取位置，優化後續可能的重複讀取 (雖然在此流程非必須)
+            await file.seek(0)
         except Exception as e:
-            file_texts.append(f"\n--- 附件檔案: {file.filename} (讀取失敗: {str(e)}) ---")
+            # 這裡可以記錄錯誤，或加入一個描述讀取失敗的文本 Part
+            parts.append(types.Part(text=f"\n[附件檔案 {file.filename} 讀取失敗: {str(e)}]\n"))
     
-    return "\n\n以下是附件內容：\n" + "\n".join(file_texts)
+    return parts
 
 @router.post("/query", response_model=QueryResponse)
 async def handle_query(
@@ -94,13 +88,14 @@ async def handle_query(
             user_id="user"
         )
         
-        # 處理上傳檔案內容 (方案 1: 一起送)
-        full_prompt = userInput
+        # 將用戶輸入與檔案轉換為 Multi-Part 訊息
+        parts = [types.Part(text=userInput)]
+        
         if files:
-            full_prompt += await process_uploaded_text_files(files)
+            file_parts = await convert_files_to_metadata_parts(files)
+            parts.extend(file_parts)
 
-        # 將組合後的訊息轉成 ADK Content
-        parts = [types.Part(text=full_prompt)]
+        # 組合成 ADK Content
         content = types.Content(role="user", parts=parts)
         
         # Runner 負責執行 Agent
