@@ -36,26 +36,30 @@ docker-compose logs -f my-adkagent
 
 ### 執行流程
 ```
-HTTP POST /query → FastAPI → ADK Session → ADK Runner → Agent → 工具函式 → 回應串流
+HTTP Request → FastAPI (main.py) → Router → ADK Session → ADK Runner → Agent → 工具函式 → 回應串流
 ```
 
 ### 核心元件
 
 | 檔案 | 用途 |
 |------|------|
-| `main.py` | FastAPI 應用入口，整合 ADK Runner |
+| `main.py` | FastAPI 應用入口，載入環境變數、設定 CORS、註冊 Router |
 | `__init__.py` | 服務常數 (SERVICE_NAME, VERSION) |
-| `root_agent/agent.py` | Agent 定義與工具函式 |
+| `api/routers/` | API 端點模組 (health.py, query.py) |
+| `root_agent/agent.py` | Agent 定義，使用 `gemini-3-flash-preview` 模型 |
+| `root_agent/tools.py` | Agent 工具函式 (get_system_time, get_weather) |
 
 ### API 端點
 
 - `GET /healthz` - 健康檢查，回傳服務名稱和版本
-- `POST /query` - 接收 `{"query": "問題"}` 格式，回傳 Agent 回應
+- `POST /query` - 接收 multipart/form-data 格式
+  - `userInput`: 用戶查詢文字
+  - `files`: 可選，支援多檔上傳 (csv, json, md 等文字檔)
 
 ### ADK 整合要點
 
 ```python
-# Session 和 Artifact 服務使用 In-Memory 實作
+# Session 和 Artifact 服務使用 In-Memory 實作 (query.py)
 session_service = InMemorySessionService()
 artifacts_service = InMemoryArtifactService()
 
@@ -70,29 +74,46 @@ runner = Runner(
 
 ## 開發流程
 
+### 新增 Router
+1. 在 `api/routers/` 建立新檔案
+2. 在 `api/routers/__init__.py` 匯出 router
+3. 在 `main.py` 註冊 `app.include_router()`
+
 ### 新增 Agent
 1. 建立 `{agent_name}/agent.py`
-2. 複製 `.env` 範本並設定 API 金鑰
-3. 在 `main.py` 中 import
+2. 複製 `root_agent/.env` 範本並設定 API 金鑰
+3. 在對應 router 中 import
 
 ### 新增工具函式
 工具函式要求:
-- 必須是同步 Python 函式
+- 可以是同步或 async 函式
 - 需要完整的 docstring (ADK 用於生成工具描述給 LLM)
 - 參數使用型別提示
-- 回傳 dict 結構，包含 `status` 欄位
+- 回傳 dict 結構
 
 ```python
-def get_current_time(city: str) -> dict:
-    """Returns the current time in a specified city."""
-    return {"status": "success", "city": city, "time": "10:30 AM"}
+# 同步範例
+def get_system_time() -> dict:
+    """Returns the current system time."""
+    return {"status": "success", "time": "10:30 AM"}
+
+# 非同步範例
+async def get_weather(latitude: float, longitude: float) -> dict:
+    """Get weather for coordinates."""
+    async with httpx.AsyncClient() as client:
+        # ...
 ```
 
 ### API 測試
 ```bash
+# 純文字查詢
 curl -X POST http://127.0.0.1:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "What time is it in Tokyo?"}'
+  -F "userInput=What time is it?"
+
+# 含檔案上傳
+curl -X POST http://127.0.0.1:8000/query \
+  -F "userInput=分析這個檔案" \
+  -F "files=@data.csv"
 ```
 
 ## Google ADK 特定行為
