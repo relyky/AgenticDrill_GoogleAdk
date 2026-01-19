@@ -56,6 +56,7 @@ uv run uvicorn main:app
 ### 使用 Docker Compose 部署（推薦）
 ```bash
 # 建置並啟動容器
+docker-compose up -d --build  # 本地程式碼有變動 (本地 Build)
 docker-compose up -d
 
 # 查看容器狀態
